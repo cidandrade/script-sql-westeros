@@ -1,0 +1,16 @@
+erDiagram
+    CASA ||--o{ PERSONAGEM : "abriga"
+    CASA {
+        INT id_casa PK "AUTO_INCREMENT"
+        VARCHAR nome UK "50, obrigatório"
+        VARCHAR lema "100, obrigatório"
+        VARCHAR sede "60, opcional"
+    }
+    PERSONAGEM {
+        INT id_personagem PK "AUTO_INCREMENT"
+        VARCHAR nome UK "80, único na casa"
+        VARCHAR titulo "80, opcional"
+        TINYINT idade "0 a 120, opcional"
+        BOOLEAN vivo "padrão TRUE"
+        INT id_casa FK,UK "obrigatório"
+    }

@@ -1,0 +1,1199 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Script SQL de Westeros</title>
+<meta name="description" content="Construção passo a passo de um script MySQL com duas tabelas relacionadas (casas e personagens de Game of Thrones) — Modelagem de Banco de Dados, Prof. Cid Andrade.">
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Inter:wght@400..700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --creme2: #F3ECDF;
+  --creme: #FAF6EC;
+  --tinta: #241B2E;
+  --tinta-suave: #6E6577;
+  --ameixa: #3B2350;
+  --ameixa2: #2E1B3F;
+  --ameixa-suave: #7C6289;
+  --verde: #234F33;
+  --verde2: #1B3E28;
+  --verde-suave: #7FA089;
+  --dourado: #B08D57;
+  --dourado-claro: #C9A56E;
+  --dourado-escuro: #755C33;
+  --borda: rgba(59, 35, 80, .16);
+  --sombra: 0 1px 2px rgba(36, 27, 46, .06), 0 6px 18px rgba(36, 27, 46, .07);
+  --serif: "Fraunces", Georgia, serif;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --nav-h: 68px;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--creme2);
+  color: var(--tinta);
+  font: 16px/1.6 var(--sans);
+  overflow-x: hidden;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--dourado); outline-offset: 2px; border-radius: 6px; }
+
+/* ---------- topo ---------- */
+.topo {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--ameixa);
+  color: var(--creme);
+  border-bottom: 3px solid var(--dourado);
+}
+.topo-int {
+  max-width: 1180px; margin: 0 auto;
+  padding: 10px 16px;
+  display: flex; align-items: center; gap: 12px;
+}
+.marca { flex: 1; min-width: 0; }
+.marca small {
+  display: block; font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--dourado-claro); font-weight: 600;
+}
+.marca strong {
+  display: block; font: 600 18px/1.2 var(--serif);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.btn-indice {
+  background: transparent; border: 1px solid rgba(250, 246, 236, .35);
+  color: var(--creme); border-radius: 999px; padding: 6px 14px; font-size: 14px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.progresso { height: 4px; background: var(--ameixa2); }
+.progresso span { display: block; height: 100%; width: 0; background: var(--dourado); transition: width .3s; }
+
+main {
+  max-width: 1180px; margin: 0 auto;
+  padding: 20px 16px calc(var(--nav-h) + 32px);
+}
+
+/* ---------- capa ---------- */
+.capa h1 {
+  font: 700 clamp(30px, 8vw, 52px)/1.08 var(--serif);
+  margin: 8px 0 12px; color: var(--ameixa); letter-spacing: -.01em;
+}
+.capa h1 em { color: var(--verde); font-style: italic; font-weight: 600; }
+.lead { font-size: 18px; color: var(--tinta); max-width: 62ch; margin: 0 0 20px; }
+.rotulo {
+  display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--dourado-escuro);
+}
+.cartao {
+  background: var(--creme); border: 1px solid var(--borda); border-radius: 14px;
+  padding: 18px 16px; box-shadow: var(--sombra); margin-bottom: 16px;
+}
+.cartao h2 { font: 600 22px/1.25 var(--serif); margin: 4px 0 10px; color: var(--ameixa); }
+.cartao h3 { font: 600 17px/1.3 var(--serif); margin: 14px 0 6px; color: var(--ameixa); }
+.cartao p { margin: 0 0 10px; }
+.cartao ul { margin: 0 0 6px; padding-left: 20px; }
+.cartao li { margin-bottom: 6px; }
+.req { list-style: none; padding: 0 !important; }
+.req li {
+  display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start;
+  padding: 10px 0; border-top: 1px dashed var(--borda); margin: 0 !important;
+}
+.req li:first-child { border-top: 0; }
+.selo {
+  font: 700 12px/1 var(--mono); padding: 5px 8px; border-radius: 6px;
+  background: var(--ameixa); color: var(--creme); white-space: nowrap; margin-top: 2px;
+}
+.selo.kpi { background: var(--verde); }
+
+.der-caixa { overflow-x: auto; background: var(--creme2); border-radius: 10px; padding: 12px; border: 1px solid var(--borda); }
+.der-caixa .mermaid { min-width: 300px; text-align: center; }
+.der-caixa svg { max-width: 100%; height: auto; }
+.der-falha { font: 13px/1.5 var(--mono); white-space: pre; margin: 0; }
+details { margin-top: 12px; }
+summary { cursor: pointer; font-weight: 600; color: var(--ameixa); }
+details pre { margin: 10px 0 0; }
+
+.cardinalidade { display: grid; gap: 10px; margin-top: 12px; }
+.cardinalidade div {
+  display: grid; grid-template-columns: 54px 1fr; gap: 10px; align-items: center;
+  font-size: 15px;
+}
+.cardinalidade code {
+  font: 700 15px var(--mono); color: var(--ameixa); background: var(--creme2);
+  border-radius: 6px; padding: 4px 0; text-align: center;
+}
+
+.btn-iniciar {
+  width: 100%; border: 0; border-radius: 12px; padding: 16px 20px;
+  background: var(--verde); color: var(--creme);
+  font: 700 18px/1 var(--sans); letter-spacing: .02em;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  box-shadow: 0 4px 0 var(--verde2);
+  transition: transform .08s, box-shadow .08s;
+}
+.btn-iniciar:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--verde2); }
+.btn-iniciar span { color: var(--dourado-claro); }
+
+/* ---------- passo ---------- */
+.passo-cab { margin-bottom: 16px; }
+.fase {
+  display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--dourado-escuro);
+}
+.fase b {
+  background: var(--dourado); color: var(--tinta); border-radius: 999px; padding: 3px 9px; letter-spacing: .06em;
+}
+.passo-cab h1 {
+  font: 700 clamp(26px, 6.5vw, 40px)/1.12 var(--serif); color: var(--ameixa);
+  margin: 8px 0 10px; letter-spacing: -.01em;
+}
+.passo-cab p { margin: 0; font-size: 17px; max-width: 70ch; }
+
+.grade { display: grid; gap: 16px; }
+.coluna { min-width: 0; }
+
+.bloco-titulo {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin: 0 0 8px;
+}
+.bloco-titulo h2 { font: 600 13px/1 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--tinta-suave); margin: 0; }
+
+.codigo {
+  position: relative; background: var(--tinta); color: var(--creme);
+  border-radius: 12px; overflow: hidden; box-shadow: var(--sombra);
+  border-top: 3px solid var(--dourado);
+}
+.codigo pre { margin: 0; padding: 14px 0; overflow-x: auto; font: 14px/1.65 var(--mono); }
+.codigo .ln { display: block; padding: 0 16px; min-height: 1.65em; white-space: pre; border-left: 3px solid transparent; transition: background .2s; }
+.codigo .ln.acesa { background: rgba(201, 165, 110, .16); border-left-color: var(--dourado-claro); }
+.tk-kw { color: var(--dourado-claro); font-weight: 700; }
+.tk-fn { color: var(--dourado-claro); }
+.tk-str { color: var(--verde-suave); }
+.tk-num { color: var(--verde-suave); }
+.tk-com { color: rgba(250, 246, 236, .72); font-style: italic; }
+.tk-pont { color: rgba(250, 246, 236, .8); }
+
+.btn-copiar {
+  border: 1px solid var(--borda); background: var(--creme); color: var(--ameixa);
+  border-radius: 8px; padding: 5px 10px; font-size: 13px; font-weight: 600;
+}
+
+.resultado {
+  border-radius: 12px; overflow: hidden; border: 1px solid var(--borda); background: var(--creme);
+  box-shadow: var(--sombra);
+}
+.terminal {
+  margin: 0; padding: 12px 16px; background: var(--ameixa2); color: var(--creme);
+  font: 13.5px/1.6 var(--mono); white-space: pre-wrap; word-break: break-word;
+}
+.terminal .ok { color: var(--verde-suave); font-weight: 700; }
+.terminal .err { color: var(--dourado-claro); font-weight: 700; }
+.terminal .dim { color: rgba(250, 246, 236, .7); }
+.erro-faixa {
+  display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+  background: var(--dourado); color: var(--tinta); font-weight: 700; font-size: 14px;
+}
+
+.tabela-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 8px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--borda); }
+th { font: 700 12px/1.2 var(--mono); color: var(--ameixa); background: var(--creme2); letter-spacing: .02em; }
+td.num { font-family: var(--mono); text-align: right; }
+td.nulo { color: var(--tinta-suave); font: italic 13px var(--mono); }
+tr.nova td { background: rgba(127, 160, 137, .2); }
+td.mudou { background: rgba(201, 165, 110, .32); font-weight: 700; }
+td.mudou s { color: var(--tinta-suave); font-weight: 400; margin-right: 6px; }
+tr.removida td { text-decoration: line-through; color: var(--tinta-suave); background: rgba(110, 101, 119, .1); }
+.rodape-res {
+  padding: 8px 16px; font: 13px var(--mono); color: var(--tinta-suave); background: var(--creme);
+}
+.legenda { display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 16px; font-size: 13px; color: var(--tinta-suave); }
+.legenda i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
+
+.partes { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.parte {
+  background: var(--creme); border: 1px solid var(--borda); border-radius: 12px; padding: 12px 14px;
+  cursor: pointer; transition: border-color .15s, box-shadow .15s;
+}
+.parte:hover { border-color: var(--ameixa-suave); }
+.parte.ativa { border-color: var(--dourado); box-shadow: 0 0 0 2px rgba(176, 141, 87, .35); }
+.parte code.trecho {
+  display: inline-block; font: 700 13.5px/1.4 var(--mono); color: var(--ameixa);
+  background: var(--creme2); border-radius: 6px; padding: 3px 7px; margin-bottom: 6px;
+  white-space: pre-wrap; word-break: break-word;
+}
+.parte p { margin: 0; font-size: 15.5px; }
+code { font-family: var(--mono); font-size: .9em; background: rgba(59, 35, 80, .08); padding: 1px 5px; border-radius: 4px; }
+.parte code.trecho + p code, .nota code { background: rgba(59, 35, 80, .08); }
+
+.nota {
+  border-left: 4px solid var(--dourado); background: var(--creme); border-radius: 0 12px 12px 0;
+  padding: 12px 14px; margin-top: 12px; font-size: 15.5px;
+}
+.nota strong.tipo { display: block; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--dourado-escuro); margin-bottom: 4px; }
+.nota.verde { border-left-color: var(--verde); }
+.nota.verde strong.tipo { color: var(--verde); }
+.nota p { margin: 0 0 6px; }
+.nota p:last-child { margin: 0; }
+
+.toque { font-size: 13px; color: var(--tinta-suave); margin: 0 0 10px; }
+
+.secao { margin-top: 22px; }
+
+/* ---------- fim ---------- */
+.fim-acoes { display: grid; gap: 10px; margin: 12px 0 16px; }
+.btn-sec {
+  border: 2px solid var(--ameixa); background: var(--creme); color: var(--ameixa);
+  border-radius: 12px; padding: 12px 16px; font-weight: 700; font-size: 16px;
+}
+.btn-prim {
+  border: 2px solid var(--ameixa); background: var(--ameixa); color: var(--creme);
+  border-radius: 12px; padding: 12px 16px; font-weight: 700; font-size: 16px;
+}
+.codigo.longo pre { max-height: 60vh; }
+.ordem { counter-reset: o; list-style: none; padding: 0 !important; }
+.ordem li { counter-increment: o; display: grid; grid-template-columns: 28px 1fr; gap: 10px; }
+.ordem li::before {
+  content: counter(o); width: 26px; height: 26px; border-radius: 50%; background: var(--dourado);
+  color: var(--tinta); font-weight: 700; font-size: 13px; display: grid; place-items: center; margin-top: 1px;
+}
+
+/* ---------- navegação ---------- */
+.nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  background: var(--creme); border-top: 1px solid var(--borda);
+  box-shadow: 0 -4px 16px rgba(36, 27, 46, .08);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.nav-int {
+  max-width: 1180px; margin: 0 auto; height: var(--nav-h);
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding: 0 12px;
+}
+.nav button {
+  border: 0; background: transparent; border-radius: 10px; padding: 10px 12px; font-weight: 700; font-size: 15px;
+  color: var(--ameixa); min-height: 46px;
+}
+.nav .ant { justify-self: start; }
+.nav .prox { justify-self: end; background: var(--ameixa); color: var(--creme); padding: 10px 18px; }
+.nav button:disabled { opacity: .35; cursor: default; }
+.contador { font: 600 13px var(--mono); color: var(--tinta-suave); text-align: center; }
+.nav[hidden] { display: none; }
+
+/* ---------- índice ---------- */
+dialog {
+  border: 0; padding: 0; border-radius: 16px; width: min(560px, calc(100vw - 24px)); max-height: 82vh;
+  background: var(--creme); color: var(--tinta); box-shadow: 0 20px 60px rgba(36, 27, 46, .35);
+}
+dialog::backdrop { background: rgba(36, 27, 46, .55); }
+.dlg-cab { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--borda); position: sticky; top: 0; background: var(--creme); }
+.dlg-cab h2 { font: 600 20px var(--serif); margin: 0; color: var(--ameixa); }
+.dlg-cab button { border: 0; background: var(--creme2); border-radius: 8px; padding: 6px 12px; font-weight: 700; }
+.lista-passos { list-style: none; margin: 0; padding: 8px; }
+.lista-passos button {
+  width: 100%; text-align: left; border: 0; background: transparent; border-radius: 10px; padding: 10px 12px;
+  display: grid; grid-template-columns: 34px 1fr; gap: 8px; align-items: baseline;
+}
+.lista-passos button:hover { background: var(--creme2); }
+.lista-passos button[aria-current="step"] { background: var(--creme2); box-shadow: inset 3px 0 0 var(--dourado); }
+.lista-passos .n { font: 700 13px var(--mono); color: var(--dourado-escuro); }
+.lista-passos .t { font-weight: 600; }
+.lista-passos .f { display: block; font-size: 12px; color: var(--tinta-suave); font-weight: 400; }
+
+.aviso-copia {
+  position: fixed; left: 50%; bottom: calc(var(--nav-h) + 16px); transform: translateX(-50%) translateY(20px);
+  background: var(--tinta); color: var(--creme); padding: 10px 16px; border-radius: 999px; font-size: 14px; font-weight: 600;
+  opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 30;
+}
+.aviso-copia.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.entra { animation: entra .28s ease-out; }
+@keyframes entra { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .entra { animation: none; } * { transition: none !important; } }
+
+/* ---------- telas maiores ---------- */
+@media (min-width: 720px) {
+  main { padding-left: 24px; padding-right: 24px; }
+  .cartao { padding: 22px 24px; }
+  .capa-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .fim-acoes { grid-template-columns: 1fr 1fr; }
+  .btn-iniciar { width: auto; padding: 16px 40px; }
+}
+@media (min-width: 1000px) {
+  .grade { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+  .grade .coluna:first-child { position: sticky; top: 84px; }
+  .codigo pre { font-size: 15px; }
+}
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-int">
+    <div class="marca">
+      <small>Modelagem de Banco de Dados · MySQL</small>
+      <strong>Script SQL passo a passo</strong>
+    </div>
+    <button class="btn-indice" id="btnIndice" type="button" aria-haspopup="dialog">☰ Passos</button>
+  </div>
+  <div class="progresso" aria-hidden="true"><span id="barra"></span></div>
+</header>
+
+<main id="palco" tabindex="-1"></main>
+
+<nav class="nav" id="nav" hidden aria-label="Navegação entre passos">
+  <div class="nav-int">
+    <button class="ant" id="btnAnt" type="button">← Anterior</button>
+    <div class="contador" id="contador" aria-live="polite"></div>
+    <button class="prox" id="btnProx" type="button">Próximo →</button>
+  </div>
+</nav>
+
+<dialog id="dlg" aria-labelledby="dlgTitulo">
+  <div class="dlg-cab">
+    <h2 id="dlgTitulo">Passos do script</h2>
+    <button type="button" id="dlgFechar">Fechar</button>
+  </div>
+  <ol class="lista-passos" id="listaPassos"></ol>
+</dialog>
+
+<div class="aviso-copia" id="aviso" role="status">Copiado!</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+"use strict";
+
+/* ===================================================================
+   Conteúdo
+   =================================================================== */
+
+const MERMAID_DER = `erDiagram
+    CASA ||--o{ PERSONAGEM : "abriga"
+    CASA {
+        INT id_casa PK "AUTO_INCREMENT"
+        VARCHAR nome UK "50, obrigatório"
+        VARCHAR lema "100, obrigatório"
+        VARCHAR sede "60, opcional"
+    }
+    PERSONAGEM {
+        INT id_personagem PK "AUTO_INCREMENT"
+        VARCHAR nome UK "80, único na casa"
+        VARCHAR titulo "80, opcional"
+        TINYINT idade "0 a 120, opcional"
+        BOOLEAN vivo "padrão TRUE"
+        INT id_casa FK,UK "obrigatório"
+    }`;
+
+// Estados das tabelas ao longo do script (o que um SELECT * mostraria).
+const COL_CASA = ["id_casa", "nome", "lema", "sede"];
+const COL_PERS = ["id_personagem", "nome", "titulo", "idade", "vivo", "id_casa"];
+const CASAS = [
+  [1, "Stark", "O inverno está chegando", "Winterfell"],
+  [2, "Lannister", "Ouça-me rugir", "Rochedo Casterly"],
+  [3, "Targaryen", "Fogo e Sangue", "Pedra do Dragão"],
+  [4, "Greyjoy", "Nós não semeamos", "Pyke"],
+];
+const PERS = [
+  [1, "Eddard Stark", "Senhor de Winterfell", 35, 1, 1],
+  [2, "Sansa Stark", null, 13, 1, 1],
+  [3, "Arya Stark", null, 11, 1, 1],
+  [4, "Tyrion Lannister", "Mão do Rei", 32, 1, 2],
+  [5, "Cersei Lannister", "Rainha Regente", 34, 1, 2],
+  [6, "Daenerys Targaryen", "Mãe dos Dragões", 16, 1, 3],
+  [7, "Theon Greyjoy", "Príncipe de Pyke", 19, 1, 4],
+];
+const comMudanca = (linhas, i, mudancas) =>
+  linhas.map((l, k) => (k === i ? l.map((v, c) => (c in mudancas ? mudancas[c] : v)) : l));
+const PERS_NED = comMudanca(PERS, 0, { 4: 0 });
+const PERS_SANSA = comMudanca(PERS_NED, 1, { 2: "Rainha do Norte", 3: 20 });
+
+const PASSOS = [
+  /* ------------------------------------------------------------ 1 */
+  {
+    fase: "DDL", rotulo: "Banco de dados",
+    titulo: "Recomeçar do zero: DROP e CREATE DATABASE",
+    intro: "Todo script de criação começa garantindo um ponto de partida limpo. Assim ele pode ser executado quantas vezes for preciso e sempre produz o mesmo banco.",
+    sql: `DROP DATABASE IF EXISTS westeros;
+
+CREATE DATABASE westeros
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_0900_ai_ci;`,
+    partes: [
+      ["DROP DATABASE", "Apaga o banco <b>inteiro</b>: todas as tabelas, dados, índices e chaves. Não existe desfazer."],
+      ["IF EXISTS", "Só tenta apagar se o banco existir. Sem isso, na primeira execução o MySQL devolve <code>ERROR 1008: Can't drop database 'westeros'; database doesn't exist</code> e o script para. Com ele, o script vira <b>reexecutável</b>."],
+      ["CREATE DATABASE westeros", "Cria o banco vazio. No MySQL, <code>DATABASE</code> e <code>SCHEMA</code> são sinônimos — o Workbench chama de <i>schema</i>."],
+      ["CHARACTER SET utf8mb4", "A codificação dos textos. <code>utf8mb4</code> guarda qualquer caractere Unicode: os acentos de <i>“Ouça-me rugir”</i>, o <i>ç</i>, até emoji. Evite <code>utf8</code>, que no MySQL é um apelido do antigo <code>utf8mb3</code>."],
+      ["COLLATE utf8mb4_0900_ai_ci", "A regra para <b>comparar e ordenar</b> textos. <code>ai</code> = <i>accent insensitive</i> e <code>ci</code> = <i>case insensitive</i>: para o banco, <code>'stark'</code>, <code>'Stark'</code> e <code>'STÁRK'</code> são iguais. É o padrão do MySQL 8."],
+      [";", "O ponto e vírgula encerra cada comando. Num script com vários comandos, ele é o separador."],
+    ],
+    resultado: {
+      tipo: "msg",
+      texto: `mysql> DROP DATABASE IF EXISTS westeros;
+<span class="ok">Query OK</span>, 0 rows affected, 1 warning
+<span class="dim">-- o aviso (Note 1008) só aparece na 1ª vez: não havia banco para apagar</span>
+
+mysql> CREATE DATABASE westeros ...;
+<span class="ok">Query OK</span>, 1 row affected`,
+    },
+    notas: [
+      ["atencao", "Cuidado", "<code>DROP DATABASE</code> faz sentido num script de <b>criação</b> (aula, desenvolvimento, testes). Num banco em produção, um script assim apagaria todos os dados reais."],
+      ["verde", "Usa XAMPP / MariaDB?", "A collation <code>utf8mb4_0900_ai_ci</code> só existe no MySQL 8. No MariaDB, troque por <code>utf8mb4_unicode_ci</code>; o resto do script funciona igual."],
+    ],
+  },
+  /* ------------------------------------------------------------ 2 */
+  {
+    fase: "DDL", rotulo: "Banco de dados",
+    titulo: "Selecionar o banco: USE",
+    intro: "Um servidor MySQL guarda vários bancos. Antes de criar tabelas, dizemos em qual deles vamos trabalhar.",
+    sql: `USE westeros;`,
+    partes: [
+      ["USE westeros", "Define <code>westeros</code> como o banco padrão <b>desta sessão</b>. A partir daqui, quando o script escreve <code>casa</code>, o MySQL entende <code>westeros.casa</code>."],
+      ["Sem o USE…", "…o primeiro <code>CREATE TABLE</code> falha com <code>ERROR 1046 (3D000): No database selected</code>. A alternativa seria qualificar todos os nomes (<code>westeros.casa</code>), o que polui o script."],
+    ],
+    resultado: { tipo: "msg", texto: `mysql> USE westeros;\n<span class="ok">Database changed</span>` },
+    notas: [
+      ["verde", "No MySQL Workbench", "Dar um duplo clique no schema, no painel <i>Navigator</i>, faz o mesmo que o <code>USE</code> — o nome fica em negrito. Mas o script deve ter o <code>USE</code> escrito: quem o executar em outra máquina não sabe qual schema você tinha clicado."],
+    ],
+  },
+  /* ------------------------------------------------------------ 3 */
+  {
+    fase: "DDL", rotulo: "Tabela 1 de 2",
+    titulo: "DROP e CREATE TABLE casa",
+    intro: "Criamos primeiro a tabela <b>pai</b> — a que não depende de ninguém. A tabela <code>personagem</code> vai apontar para ela, então ela precisa existir antes. Como no banco, cada tabela é antes removida, se já existir.",
+    sql: `DROP TABLE IF EXISTS casa;
+
+CREATE TABLE casa (
+  id_casa  INT          NOT NULL AUTO_INCREMENT,
+  nome     VARCHAR(50)  NOT NULL,
+  lema     VARCHAR(100) NOT NULL,
+  sede     VARCHAR(60)  NULL,
+
+  CONSTRAINT pk_casa      PRIMARY KEY (id_casa),
+  CONSTRAINT uq_casa_nome UNIQUE (nome),
+  CONSTRAINT ck_casa_nome CHECK (CHAR_LENGTH(TRIM(nome)) > 0)
+) ENGINE = InnoDB;`,
+    partes: [
+      ["DROP TABLE IF EXISTS casa", "Remove a tabela, com estrutura e dados, se ela existir — a mesma ideia do <code>DROP DATABASE IF EXISTS</code>, só que no nível da tabela. Garante que o <code>CREATE TABLE</code> logo abaixo não falhe com <code>ERROR 1050: Table 'casa' already exists</code>."],
+      ["CREATE TABLE casa", "Cria a tabela. Convenção usada aqui: nomes no <b>singular</b>, minúsculos, sem acento e com <code>_</code> entre palavras (<i>snake_case</i>)."],
+      ["id_casa  INT          NOT NULL AUTO_INCREMENT", "Uma <b>chave substituta</b> (<i>surrogate key</i>): um número sem significado de negócio que o próprio banco gera — 1, 2, 3… <code>AUTO_INCREMENT</code> só é aceito em coluna que seja chave."],
+      ["nome     VARCHAR(50)  NOT NULL", "<code>VARCHAR(50)</code>: texto de tamanho variável, até 50 caracteres. <code>NOT NULL</code>: o campo é <b>obrigatório</b>."],
+      ["lema     VARCHAR(100) NOT NULL", "Regra de negócio deste modelo: toda casa tem lema."],
+      ["sede     VARCHAR(60)  NULL", "Campo <b>opcional</b>. <code>NULL</code> é o padrão, mas escrevê-lo documenta a intenção. Lembre: <code>NULL</code> é <i>ausência de valor</i> — não é texto vazio nem zero."],
+      ["CONSTRAINT pk_casa      PRIMARY KEY (id_casa)", "A <b>chave primária</b> identifica cada linha: valor único e nunca nulo. Curiosidade do MySQL: ele aceita o nome <code>pk_casa</code>, mas o ignora — a PK sempre se chama <code>PRIMARY</code>."],
+      ["CONSTRAINT uq_casa_nome UNIQUE (nome)", "Uma <b>chave candidata</b> (alternativa): não pode haver duas casas chamadas “Stark”. Tentar dá <code>ERROR 1062: Duplicate entry 'Stark' for key 'casa.uq_casa_nome'</code>."],
+      ["CONSTRAINT ck_casa_nome CHECK (CHAR_LENGTH(TRIM(nome)) > 0)", "<code>NOT NULL</code> não barra o texto vazio <code>''</code> nem <code>'   '</code>. O <code>CHECK</code> tira os espaços (<code>TRIM</code>) e exige pelo menos um caractere. O MySQL só respeita <code>CHECK</code> a partir da versão <b>8.0.16</b>; antes, lia e ignorava."],
+      ["ENGINE = InnoDB", "O motor de armazenamento. O InnoDB tem transações e <b>chaves estrangeiras</b>; o antigo MyISAM ignora FKs em silêncio. É o padrão desde o MySQL 5.5, mas deixar explícito evita surpresas."],
+    ],
+    resultado: { tipo: "msg", texto: `mysql> DROP TABLE IF EXISTS casa;
+<span class="ok">Query OK</span>, 0 rows affected, 1 warning
+<span class="dim">-- Note 1051: Unknown table 'westeros.casa' — o banco acabou de ser criado</span>
+
+mysql> CREATE TABLE casa ( ... ) ENGINE = InnoDB;
+<span class="ok">Query OK</span>, 0 rows affected` },
+    notas: [
+      ["verde", "Por que dar nome às constraints?", "Porque o nome aparece nas mensagens de erro (fica óbvio <i>qual</i> regra foi violada) e permite removê-la depois: <code>ALTER TABLE casa DROP CONSTRAINT ck_casa_nome;</code>. Prefixos usados: <code>pk_</code>, <code>uq_</code>, <code>ck_</code>, <code>fk_</code>."],
+      ["atencao", "Conferindo", "Para ver a estrutura criada, use <code>DESCRIBE casa;</code> ou <code>SHOW CREATE TABLE casa;</code>."],
+    ],
+  },
+  /* ------------------------------------------------------------ 4 */
+  {
+    fase: "DDL", rotulo: "Tabela 2 de 2",
+    titulo: "DROP e CREATE TABLE personagem",
+    intro: "Agora a tabela <b>filha</b>. Cada personagem pertence a exatamente uma casa — o lado <code>||</code> do DER — e isso vira uma <b>chave estrangeira</b> obrigatória.",
+    sql: `DROP TABLE IF EXISTS personagem;
+
+CREATE TABLE personagem (
+  id_personagem INT              NOT NULL AUTO_INCREMENT,
+  nome          VARCHAR(80)      NOT NULL,
+  titulo        VARCHAR(80)      NULL,
+  idade         TINYINT UNSIGNED NULL,
+  vivo          BOOLEAN          NOT NULL DEFAULT TRUE,
+  id_casa       INT              NOT NULL,
+
+  CONSTRAINT pk_personagem           PRIMARY KEY (id_personagem),
+  CONSTRAINT uq_personagem_nome_casa UNIQUE (nome, id_casa),
+  CONSTRAINT ck_personagem_idade     CHECK (idade BETWEEN 0 AND 120),
+  CONSTRAINT fk_personagem_casa      FOREIGN KEY (id_casa)
+      REFERENCES casa (id_casa)
+      ON DELETE RESTRICT
+      ON UPDATE CASCADE
+) ENGINE = InnoDB;`,
+    partes: [
+      ["DROP TABLE IF EXISTS personagem", "Mesma proteção do passo anterior: se a tabela já existir, ela sai antes de ser recriada."],
+      ["titulo        VARCHAR(80)      NULL", "Opcional: nem todo personagem tem título. A Arya, por exemplo, vai ficar com <code>NULL</code>."],
+      ["idade         TINYINT UNSIGNED NULL", "<code>TINYINT</code> ocupa 1 byte; <code>UNSIGNED</code> tira os negativos, ficando de 0 a 255. Idade desconhecida = <code>NULL</code>."],
+      ["vivo          BOOLEAN          NOT NULL DEFAULT TRUE", "No MySQL, <code>BOOLEAN</code> é apelido de <code>TINYINT(1)</code>: <code>TRUE</code> vira 1 e <code>FALSE</code> vira 0. <code>DEFAULT TRUE</code> é o valor usado quando o <code>INSERT</code> não informa a coluna."],
+      ["id_casa       INT              NOT NULL", "A coluna que vai receber a FK. O tipo tem de ser <b>idêntico</b> ao da PK de <code>casa</code> (<code>INT</code> com <code>INT</code>; se um lado fosse <code>UNSIGNED</code> e o outro não, a FK seria recusada). <code>NOT NULL</code> implementa a cardinalidade mínima 1: não existe personagem sem casa."],
+      ["CONSTRAINT pk_personagem           PRIMARY KEY (id_personagem)", "Chave primária, como na tabela anterior."],
+      ["CONSTRAINT uq_personagem_nome_casa UNIQUE (nome, id_casa)", "<b>UNIQUE composta</b>: é o <i>par</i> que não se repete. Pode haver dois “Jon” em casas diferentes, mas não duas vezes o mesmo nome na mesma casa."],
+      ["CONSTRAINT ck_personagem_idade     CHECK (idade BETWEEN 0 AND 120)", "Faixa plausível de idade. Detalhe importante: um <code>CHECK</code> com <code>NULL</code> <b>passa</b> — o resultado é “desconhecido”, e só o “falso” é barrado. Por isso a idade continua opcional."],
+      ["FOREIGN KEY (id_casa)", "A <b>chave estrangeira</b>: <code>id_casa</code> só aceita valores que existam em <code>casa.id_casa</code>. Inserir <code>id_casa = 99</code> dá <code>ERROR 1452: Cannot add or update a child row</code>. O MySQL cria sozinho um índice para essa coluna."],
+      ["REFERENCES casa (id_casa)", "A tabela e a coluna referenciadas. É por isso que <code>casa</code> foi criada antes: no script, <b>pais antes de filhos</b>."],
+      ["ON DELETE RESTRICT", "Impede apagar uma casa que ainda tenha personagens — veremos o erro acontecer no passo 11. As alternativas seriam <code>CASCADE</code> (apaga os personagens junto) e <code>SET NULL</code> (exigiria <code>id_casa</code> aceitando nulo)."],
+      ["ON UPDATE CASCADE", "Se o <code>id_casa</code> de uma casa mudar, a mudança se propaga para os personagens. Com chave substituta isso é raro, mas é a escolha mais segura."],
+    ],
+    resultado: { tipo: "msg", texto: `mysql> DROP TABLE IF EXISTS personagem;
+<span class="ok">Query OK</span>, 0 rows affected, 1 warning
+<span class="dim">-- Note 1051: Unknown table 'westeros.personagem'</span>
+
+mysql> CREATE TABLE personagem ( ... ) ENGINE = InnoDB;
+<span class="ok">Query OK</span>, 0 rows affected` },
+    notas: [
+      ["verde", "A ordem importa — nos dois sentidos", "Para <b>criar</b>: pai, depois filho (<code>casa</code> → <code>personagem</code>). Para <b>apagar</b> é o contrário: com a FK no lugar, <code>DROP TABLE casa;</code> falha com <code>ERROR 3730: Cannot drop table 'casa' referenced by a foreign key constraint</code> enquanto <code>personagem</code> existir."],
+      ["atencao", "Então por que funciona aqui?", "Porque o <code>DROP DATABASE</code> do passo 1 já levou tudo: quando o <code>DROP TABLE IF EXISTS casa</code> roda, <code>personagem</code> ainda não existe. Se você tirar o <code>DROP DATABASE</code> do script, junte os <code>DROP TABLE</code> no início, na ordem inversa: primeiro <code>personagem</code>, depois <code>casa</code>."],
+    ],
+  },
+  /* ------------------------------------------------------------ 5 */
+  {
+    fase: "DML", rotulo: "Inserir · 1 registro",
+    titulo: "INSERT INTO: uma casa",
+    intro: "Com as tabelas prontas, começamos a gravar dados — sempre pela tabela pai.",
+    sql: `INSERT INTO casa (nome, lema, sede)
+VALUES ('Stark', 'O inverno está chegando', 'Winterfell');`,
+    partes: [
+      ["INSERT INTO casa", "A tabela que recebe a linha."],
+      ["(nome, lema, sede)", "A <b>lista de colunas</b>. Sempre a escreva: o script continua certo mesmo que alguém acrescente colunas à tabela depois. <code>id_casa</code> ficou de fora de propósito — o <code>AUTO_INCREMENT</code> gera o valor 1."],
+      ["VALUES ('Stark', 'O inverno está chegando', 'Winterfell')", "Os valores, <b>na ordem da lista de colunas</b> (não na ordem da tabela). Texto vai entre aspas simples; números, sem aspas. Um par de parênteses = uma linha."],
+    ],
+    resultado: { tipo: "msg", texto: `mysql> INSERT INTO casa (nome, lema, sede) VALUES (...);\n<span class="ok">Query OK</span>, 1 row affected` },
+    estado: { tabela: "casa", colunas: COL_CASA, linhas: CASAS.slice(0, 1), novas: [0] },
+    notas: [
+      ["verde", "Apóstrofo dentro do texto", "Para gravar <i>King's Landing</i>, dobre o apóstrofo: <code>'King''s Landing'</code>."],
+      ["atencao", "Qual id foi gerado?", "A função <code>LAST_INSERT_ID()</code> devolve o último valor de <code>AUTO_INCREMENT</code> gerado na sua sessão — útil quando a aplicação precisa do id logo depois de inserir."],
+    ],
+  },
+  /* ------------------------------------------------------------ 6 */
+  {
+    fase: "DML", rotulo: "Inserir · vários registros",
+    titulo: "INSERT INTO: várias casas num só comando",
+    intro: "O mesmo <code>INSERT</code> aceita várias linhas: basta separar os grupos de valores por vírgula.",
+    sql: `INSERT INTO casa (nome, lema, sede) VALUES
+  ('Lannister', 'Ouça-me rugir',    'Rochedo Casterly'),
+  ('Targaryen', 'Fogo e Sangue',    'Pedra do Dragão'),
+  ('Greyjoy',   'Nós não semeamos', 'Pyke');`,
+    partes: [
+      ["INSERT INTO casa (nome, lema, sede) VALUES", "Igual ao passo anterior: tabela, lista de colunas e <code>VALUES</code> — escritos <b>uma vez só</b>."],
+      ["('Lannister', 'Ouça-me rugir',    'Rochedo Casterly'),", "Cada parênteses é uma linha, separada da próxima por <b>vírgula</b>. Os ids gerados serão 2, 3 e 4."],
+      ["('Greyjoy',   'Nós não semeamos', 'Pyke');", "A última linha termina com <code>;</code>, não com vírgula — esquecer isso é o erro de sintaxe mais comum aqui."],
+      ["Por que num só comando?", "É mais rápido (uma ida ao servidor em vez de três) e é <b>atômico</b> no InnoDB: se uma linha falhar — por exemplo, repetir <code>'Stark'</code>, que viola <code>uq_casa_nome</code> —, nenhuma das três é gravada."],
+    ],
+    resultado: { tipo: "msg", texto: `mysql> INSERT INTO casa (nome, lema, sede) VALUES (...), (...), (...);\n<span class="ok">Query OK</span>, 3 rows affected\nRecords: 3  Duplicates: 0  Warnings: 0` },
+    estado: { tabela: "casa", colunas: COL_CASA, linhas: CASAS, novas: [1, 2, 3] },
+  },
+  /* ------------------------------------------------------------ 7 */
+  {
+    fase: "DML", rotulo: "Inserir · tabela filha",
+    titulo: "INSERT INTO: os personagens",
+    intro: "Agora a tabela filha. Cada personagem informa o <code>id_casa</code> de uma casa que <b>já existe</b> — a FK confere. As idades são ilustrativas, do início da história.",
+    sql: `INSERT INTO personagem (nome, titulo, idade, id_casa) VALUES
+  ('Eddard Stark',       'Senhor de Winterfell', 35, 1),
+  ('Sansa Stark',        NULL,                   13, 1),
+  ('Arya Stark',         NULL,                   11, 1),
+  ('Tyrion Lannister',   'Mão do Rei',           32, 2),
+  ('Cersei Lannister',   'Rainha Regente',       34, 2),
+  ('Daenerys Targaryen', 'Mãe dos Dragões',      16, 3),
+  ('Theon Greyjoy',      'Príncipe de Pyke',     19, 4);`,
+    partes: [
+      ["(nome, titulo, idade, id_casa)", "A coluna <code>vivo</code> <b>não está na lista</b>: todos recebem o <code>DEFAULT TRUE</code> definido no <code>CREATE TABLE</code>. E <code>id_personagem</code> vem do <code>AUTO_INCREMENT</code> (1 a 7)."],
+      ["NULL", "Sem aspas, <code>NULL</code> é ausência de valor. Entre aspas, <code>'NULL'</code> seria um texto de quatro letras — bem diferente."],
+      [", 1)", "O último valor de cada linha é o <code>id_casa</code>: 1 = Stark, 2 = Lannister, 3 = Targaryen, 4 = Greyjoy. Um id inexistente (ex.: 99) seria barrado pela <code>fk_personagem_casa</code>."],
+    ],
+    resultado: { tipo: "msg", texto: `mysql> INSERT INTO personagem (...) VALUES (...), ... ;\n<span class="ok">Query OK</span>, 7 rows affected\nRecords: 7  Duplicates: 0  Warnings: 0` },
+    estado: { tabela: "personagem", colunas: COL_PERS, linhas: PERS, novas: [0, 1, 2, 3, 4, 5, 6] },
+    notas: [
+      ["verde", "E o BOOLEAN?", "Repare na coluna <code>vivo</code> da tabela ao lado: o MySQL guarda e mostra <code>1</code>, não <code>TRUE</code>."],
+    ],
+  },
+  /* ------------------------------------------------------------ 8 */
+  {
+    fase: "DQL", rotulo: "Consulta C01",
+    titulo: "SELECT com INNER JOIN",
+    intro: "Os dados estão em duas tabelas; o <code>JOIN</code> os junta de volta usando a ligação FK → PK. Toda consulta do script começa com um cabeçalho que diz <b>o que faz</b> e <b>a que necessidade atende</b>.",
+    sql: `-- C01 - Listar cada personagem com o nome e a sede da sua casa
+-- Atende: P1 - Saber a que casa cada personagem pertence e onde fica a sede
+SELECT p.nome   AS personagem,
+       p.titulo,
+       c.nome   AS casa,
+       c.sede
+  FROM personagem AS p
+ INNER JOIN casa  AS c
+    ON c.id_casa = p.id_casa
+ ORDER BY c.nome, p.nome;`,
+    partes: [
+      ["-- C01 - Listar", "<code>--</code> inicia um comentário (atenção: o MySQL exige um espaço depois dos dois traços). <b>C01</b> numera a consulta e a frase diz o que ela devolve."],
+      ["-- Atende: P1", "Liga a consulta ao <b>problema</b> do negócio (ou KPI) que ela resolve — os requisitos estão na tela inicial. Consulta que não atende a nada não deveria estar no script."],
+      ["SELECT p.nome   AS personagem,", "As colunas do resultado. <code>p.nome</code> diz “o <code>nome</code> da tabela <code>p</code>” — necessário porque as duas tabelas têm uma coluna <code>nome</code>. <code>AS personagem</code> dá um apelido à coluna no resultado."],
+      ["FROM personagem AS p", "A tabela de partida, com o apelido <code>p</code> para encurtar o resto da consulta."],
+      ["INNER JOIN casa  AS c", "Junta cada linha de <code>personagem</code> com linhas de <code>casa</code>. O <code>INNER</code> só traz as combinações que têm par dos dois lados."],
+      ["ON c.id_casa = p.id_casa", "A <b>condição de junção</b>: a FK do filho igual à PK do pai. Sem o <code>ON</code>, o banco combinaria todo mundo com todo mundo — 7 × 4 = 28 linhas sem sentido (o <i>produto cartesiano</i>)."],
+      ["ORDER BY c.nome, p.nome", "Ordena por casa e, dentro da casa, por personagem. Sem <code>ORDER BY</code>, a ordem das linhas <b>não é garantida</b>."],
+    ],
+    resultado: {
+      tipo: "tabela",
+      colunas: ["personagem", "titulo", "casa", "sede"],
+      linhas: [
+        ["Theon Greyjoy", "Príncipe de Pyke", "Greyjoy", "Pyke"],
+        ["Cersei Lannister", "Rainha Regente", "Lannister", "Rochedo Casterly"],
+        ["Tyrion Lannister", "Mão do Rei", "Lannister", "Rochedo Casterly"],
+        ["Arya Stark", null, "Stark", "Winterfell"],
+        ["Eddard Stark", "Senhor de Winterfell", "Stark", "Winterfell"],
+        ["Sansa Stark", null, "Stark", "Winterfell"],
+        ["Daenerys Targaryen", "Mãe dos Dragões", "Targaryen", "Pedra do Dragão"],
+      ],
+      rodape: "7 rows in set",
+    },
+    notas: [
+      ["verde", "Leia o resultado", "O <code>titulo</code> da Arya e da Sansa aparece como <code>NULL</code>: a linha existe, só falta o valor. A tabela <code>casa</code> repetiu sede e nome para cada personagem — é o <code>JOIN</code> “desnormalizando” só na saída, enquanto no disco cada casa continua gravada uma única vez."],
+    ],
+  },
+  /* ------------------------------------------------------------ 9 */
+  {
+    fase: "DML", rotulo: "Alterar · 1 coluna",
+    titulo: "UPDATE: Eddard Stark morre",
+    intro: "O <code>UPDATE</code> altera linhas que já existem. A parte mais importante do comando é a que está no fim: o <code>WHERE</code>.",
+    sql: `UPDATE personagem
+   SET vivo = FALSE
+ WHERE id_personagem = 1;`,
+    partes: [
+      ["UPDATE personagem", "A tabela que será alterada."],
+      ["SET vivo = FALSE", "Coluna e novo valor. <code>FALSE</code> será gravado como 0."],
+      ["WHERE id_personagem = 1", "<b>Quais linhas</b> mudam. Filtrar pela chave primária garante que no máximo uma linha seja afetada. <b>Sem o <code>WHERE</code>, todos os personagens morreriam.</b>"],
+    ],
+    resultado: { tipo: "msg", texto: `mysql> UPDATE personagem SET vivo = FALSE WHERE id_personagem = 1;\n<span class="ok">Query OK</span>, 1 row affected\nRows matched: 1  Changed: 1  Warnings: 0` },
+    estado: { tabela: "personagem", colunas: COL_PERS, linhas: PERS_NED, antes: PERS, mudou: { 0: [4] } },
+    notas: [
+      ["verde", "Matched × Changed", "<i>Rows matched</i> conta as linhas que o <code>WHERE</code> encontrou; <i>Changed</i>, as que de fato mudaram. Rodando o comando de novo: <code>Rows matched: 1  Changed: 0</code> — o Eddard já estava morto."],
+      ["atencao", "Error 1175 no Workbench", "O Workbench vem com o <i>Safe Updates</i> ligado: ele recusa <code>UPDATE</code> e <code>DELETE</code> cujo <code>WHERE</code> não use uma coluna-chave. Filtrar pela PK, como aqui, é o jeito certo — não desligue a proteção."],
+    ],
+  },
+  /* ------------------------------------------------------------ 10 */
+  {
+    fase: "DML", rotulo: "Alterar · várias colunas",
+    titulo: "UPDATE: Sansa vira Rainha do Norte",
+    intro: "Um <code>UPDATE</code> pode mudar várias colunas de uma vez, e o novo valor pode ser calculado a partir do valor atual.",
+    sql: `UPDATE personagem
+   SET titulo = 'Rainha do Norte',
+       idade  = idade + 7
+ WHERE id_personagem = 2;`,
+    partes: [
+      ["SET titulo = 'Rainha do Norte',", "Várias atribuições, <b>separadas por vírgula</b> (e não por <code>AND</code> — escrever <code>SET a = 1 AND b = 2</code> é um erro clássico que não dá erro, só grava lixo)."],
+      ["idade  = idade + 7", "Uma expressão que usa o valor atual da própria linha: 13 + 7 = 20. Cuidado: se a idade fosse <code>NULL</code>, o resultado também seria <code>NULL</code> — qualquer conta com <code>NULL</code> dá <code>NULL</code>."],
+      ["WHERE id_personagem = 2", "De novo, a chave primária identifica exatamente a Sansa."],
+    ],
+    resultado: { tipo: "msg", texto: `mysql> UPDATE personagem SET titulo = ..., idade = idade + 7 WHERE id_personagem = 2;\n<span class="ok">Query OK</span>, 1 row affected\nRows matched: 1  Changed: 1  Warnings: 0` },
+    estado: { tabela: "personagem", colunas: COL_PERS, linhas: PERS_SANSA, antes: PERS_NED, mudou: { 1: [2, 3] } },
+    notas: [
+      ["verde", "Hábito profissional", "Antes de um <code>UPDATE</code> ou <code>DELETE</code>, rode um <code>SELECT</code> com o <b>mesmo</b> <code>WHERE</code> para ver quais linhas serão atingidas. Ou trabalhe dentro de uma transação: <code>START TRANSACTION;</code> … confira … <code>COMMIT;</code> (ou <code>ROLLBACK;</code> para desfazer)."],
+    ],
+  },
+  /* ------------------------------------------------------------ 11 */
+  {
+    fase: "DML", rotulo: "Excluir · o erro",
+    titulo: "DELETE barrado pela chave estrangeira",
+    intro: "Vamos tentar remover a casa Greyjoy. Só que o Theon ainda aponta para ela — e a FK foi criada com <code>ON DELETE RESTRICT</code>.",
+    sql: `DELETE FROM casa
+ WHERE nome = 'Greyjoy';`,
+    script: "comentado",
+    partes: [
+      ["DELETE FROM casa", "Remove linhas inteiras da tabela (para mudar só uma coluna, o comando é <code>UPDATE</code>)."],
+      ["WHERE nome = 'Greyjoy'", "Como <code>nome</code> é <code>UNIQUE</code>, o filtro atinge no máximo uma casa — e, por ser uma coluna-chave, o <i>Safe Updates</i> do Workbench aceita."],
+      ["ERROR 1451", "O banco <b>recusou</b>: apagar a casa deixaria o Theon “órfão”, com <code>id_casa = 4</code> apontando para o nada. É a <b>integridade referencial</b> funcionando. Nada foi apagado."],
+    ],
+    resultado: {
+      tipo: "erro",
+      texto: "mysql> DELETE FROM casa WHERE nome = 'Greyjoy';\n<span class=\"err\">ERROR 1451 (23000)</span>: Cannot delete or update a parent row: a foreign key constraint fails (`westeros`.`personagem`, CONSTRAINT `fk_personagem_casa` FOREIGN KEY (`id_casa`) REFERENCES `casa` (`id_casa`) ON DELETE RESTRICT ON UPDATE CASCADE)",
+    },
+    notas: [
+      ["atencao", "Na versão para baixar", "No script completo (último passo), este comando vai <b>comentado</b>: um erro interrompe a execução do script, e a ideia aqui é só demonstrá-lo."],
+      ["verde", "E se fosse CASCADE?", "Com <code>ON DELETE CASCADE</code>, este mesmo comando apagaria a casa <b>e o Theon junto</b>, sem perguntar nada. Poderoso — e perigoso. Por isso o <code>RESTRICT</code> é a escolha mais segura para começar."],
+    ],
+  },
+  /* ------------------------------------------------------------ 12 */
+  {
+    fase: "DML", rotulo: "Excluir · o filho",
+    titulo: "DELETE: primeiro o personagem",
+    intro: "Para apagar o pai, é preciso antes resolver os filhos. Aqui, removemos o Theon.",
+    sql: `DELETE FROM personagem
+ WHERE id_personagem = 7;`,
+    partes: [
+      ["DELETE FROM personagem", "Agora apagamos na tabela <b>filha</b> — ninguém depende de um personagem, então a FK não reclama."],
+      ["WHERE id_personagem = 7", "A PK identifica exatamente o Theon. <b>Um <code>DELETE</code> sem <code>WHERE</code> esvazia a tabela inteira.</b>"],
+    ],
+    resultado: { tipo: "msg", texto: `mysql> DELETE FROM personagem WHERE id_personagem = 7;\n<span class="ok">Query OK</span>, 1 row affected` },
+    estado: { tabela: "personagem", colunas: COL_PERS, linhas: PERS_SANSA, removidas: [6] },
+  },
+  /* ------------------------------------------------------------ 13 */
+  {
+    fase: "DQL", rotulo: "Consulta C02",
+    titulo: "SELECT com LEFT JOIN e GROUP BY",
+    intro: "Um indicador: quantos personagens cada casa tem, e quantos estão vivos. Ele também revela que a Greyjoy ficou vazia.",
+    sql: `-- C02 - Contar, por casa, os personagens cadastrados e os vivos
+-- Atende: K1 - Personagens vivos por casa
+SELECT c.nome                   AS casa,
+       COUNT(p.id_personagem)   AS total,
+       COALESCE(SUM(p.vivo), 0) AS vivos
+  FROM casa AS c
+  LEFT JOIN personagem AS p
+    ON p.id_casa = c.id_casa
+ GROUP BY c.id_casa, c.nome
+ ORDER BY c.nome;`,
+    partes: [
+      ["-- Atende: K1", "Esta consulta atende a um <b>KPI</b>, não a uma pergunta pontual: um número que se acompanha ao longo do tempo."],
+      ["LEFT JOIN personagem AS p", "Mantém <b>todas</b> as linhas da tabela da esquerda (<code>casa</code>), mesmo as que não têm par. Para elas, as colunas de <code>p</code> vêm <code>NULL</code>. Com <code>INNER JOIN</code>, a Greyjoy simplesmente sumiria do relatório."],
+      ["COUNT(p.id_personagem)   AS total", "<code>COUNT(coluna)</code> conta só os valores <b>não nulos</b> — a Greyjoy dá 0. Usar <code>COUNT(*)</code> contaria a linha de <code>NULL</code>s e diria 1 (erro clássico com <code>LEFT JOIN</code>)."],
+      ["COALESCE(SUM(p.vivo), 0) AS vivos", "Como <code>vivo</code> vale 1 ou 0, somar dá o número de vivos. Sem nenhum personagem, <code>SUM</code> devolve <code>NULL</code>; <code>COALESCE</code> troca o primeiro nulo pelo valor seguinte, 0."],
+      ["GROUP BY c.id_casa, c.nome", "Junta as linhas de cada casa em uma só, para que <code>COUNT</code> e <code>SUM</code> calculem <b>por casa</b>. Toda coluna do <code>SELECT</code> que não está numa função de agregação deve estar no <code>GROUP BY</code>."],
+    ],
+    resultado: {
+      tipo: "tabela",
+      colunas: ["casa", "total", "vivos"],
+      linhas: [
+        ["Greyjoy", 0, 0],
+        ["Lannister", 2, 2],
+        ["Stark", 3, 2],
+        ["Targaryen", 1, 1],
+      ],
+      rodape: "4 rows in set",
+    },
+    notas: [
+      ["verde", "O indicador pede uma ação", "Stark tem 3 personagens e 2 vivos (o Eddard morreu no passo 9). A Greyjoy tem zero: agora que ninguém depende dela, podemos removê-la."],
+    ],
+  },
+  /* ------------------------------------------------------------ 14 */
+  {
+    fase: "DML", rotulo: "Excluir · o pai",
+    titulo: "DELETE: agora a casa sai",
+    intro: "Exatamente o mesmo comando do passo 11. A diferença está nos dados: nenhum personagem aponta mais para a Greyjoy.",
+    sql: `DELETE FROM casa
+ WHERE nome = 'Greyjoy';`,
+    partes: [
+      ["DELETE FROM casa", "Mesmo comando, agora aceito — a <code>fk_personagem_casa</code> não encontra nenhum filho."],
+      ["Ordem de exclusão", "<b>Filhos antes do pai</b> — o inverso da ordem de inserção. É a mesma lógica do <code>DROP TABLE</code>."],
+    ],
+    resultado: { tipo: "msg", texto: `mysql> DELETE FROM casa WHERE nome = 'Greyjoy';\n<span class="ok">Query OK</span>, 1 row affected` },
+    estado: { tabela: "casa", colunas: COL_CASA, linhas: CASAS, removidas: [3] },
+    notas: [
+      ["verde", "O id 4 não volta", "O <code>AUTO_INCREMENT</code> não reaproveita números: a próxima casa inserida receberá o id 5, não o 4. Buracos na sequência são normais e não são um problema."],
+    ],
+  },
+];
+
+/* ===================================================================
+   Utilidades
+   =================================================================== */
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+const KW = new Set(("DROP DATABASE IF EXISTS CREATE CHARACTER SET COLLATE USE TABLE NOT NULL AUTO_INCREMENT CONSTRAINT " +
+  "PRIMARY KEY UNIQUE CHECK FOREIGN REFERENCES ON DELETE UPDATE CASCADE RESTRICT ENGINE INSERT INTO VALUES SELECT AS FROM " +
+  "INNER LEFT JOIN ORDER BY GROUP DEFAULT TRUE FALSE BETWEEN AND WHERE").split(" "));
+const FN = new Set("INT VARCHAR TINYINT UNSIGNED BOOLEAN COUNT SUM COALESCE CHAR_LENGTH TRIM INNODB".split(" "));
+
+function realcarLinha(linha) {
+  const re = /(--.*$)|('(?:[^']|'')*')|(\b\d+\b)|([A-Za-z_][A-Za-z0-9_]*)|([(),;=.*+<>])/g;
+  let out = "", ult = 0, m;
+  while ((m = re.exec(linha))) {
+    out += esc(linha.slice(ult, m.index));
+    const [t, com, str, num, pal, pont] = m;
+    if (com) out += `<span class="tk-com">${esc(com)}</span>`;
+    else if (str) out += `<span class="tk-str">${esc(str)}</span>`;
+    else if (num) out += `<span class="tk-num">${num}</span>`;
+    else if (pal) {
+      const up = pal.toUpperCase();
+      if (KW.has(up)) out += `<span class="tk-kw">${pal}</span>`;
+      else if (FN.has(up)) out += `<span class="tk-fn">${pal}</span>`;
+      else out += esc(pal);
+    } else if (pont) out += `<span class="tk-pont">${esc(pont)}</span>`;
+    ult = m.index + t.length;
+  }
+  return out + esc(linha.slice(ult));
+}
+
+function blocoCodigo(sql, { longo = false } = {}) {
+  const linhas = sql.split("\n").map((l) => `<span class="ln">${realcarLinha(l) || " "}</span>`).join("");
+  return `<div class="codigo${longo ? " longo" : ""}"><pre><code>${linhas}</code></pre></div>`;
+}
+
+const ehNum = (v) => typeof v === "number";
+function celula(v, extra = "") {
+  if (v === null) return `<td class="nulo ${extra}">NULL</td>`;
+  return `<td class="${ehNum(v) ? "num " : ""}${extra}">${esc(v)}</td>`;
+}
+
+function tabelaHTML(colunas, linhas, { novas = [], removidas = [], mudou = {}, antes = null } = {}) {
+  const cab = colunas.map((c) => `<th scope="col">${esc(c)}</th>`).join("");
+  const corpo = linhas.map((l, i) => {
+    const cls = novas.includes(i) ? "nova" : removidas.includes(i) ? "removida" : "";
+    const tds = l.map((v, c) => {
+      if (mudou[i] && mudou[i].includes(c)) {
+        const velho = antes[i][c];
+        const tag = velho === null ? "NULL" : esc(velho);
+        return `<td class="mudou${ehNum(v) ? " num" : ""}"><s>${tag}</s>${esc(v)}</td>`;
+      }
+      return celula(v);
+    }).join("");
+    return `<tr class="${cls}">${tds}</tr>`;
+  }).join("");
+  return `<div class="tabela-wrap"><table><thead><tr>${cab}</tr></thead><tbody>${corpo}</tbody></table></div>`;
+}
+
+function legendaEstado(e) {
+  const itens = [];
+  if (e.novas) itens.push(`<span><i style="background:rgba(127,160,137,.45)"></i>linha inserida</span>`);
+  if (e.mudou) itens.push(`<span><i style="background:rgba(201,165,110,.55)"></i>valor alterado (riscado = antes)</span>`);
+  if (e.removidas) itens.push(`<span><i style="background:rgba(110,101,119,.3)"></i>linha excluída</span>`);
+  return `<div class="legenda">${itens.join("")}</div>`;
+}
+
+function nota([tipo, titulo, html]) {
+  return `<div class="nota ${tipo === "verde" ? "verde" : ""}"><strong class="tipo">${esc(titulo)}</strong><p>${html}</p></div>`;
+}
+
+let timerAviso;
+function avisar(msg) {
+  const a = document.getElementById("aviso");
+  a.textContent = msg;
+  a.classList.add("on");
+  clearTimeout(timerAviso);
+  timerAviso = setTimeout(() => a.classList.remove("on"), 1600);
+}
+async function copiar(texto) {
+  try { await navigator.clipboard.writeText(texto); avisar("Copiado!"); }
+  catch {
+    const ta = document.createElement("textarea");
+    ta.value = texto; document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); avisar("Copiado!"); } catch { avisar("Não foi possível copiar"); }
+    ta.remove();
+  }
+}
+
+function scriptCompleto() {
+  const cab = `-- =============================================================
+-- Script: westeros.sql  (MySQL 8)
+-- Banco de exemplo: casas e personagens de Game of Thrones
+-- Modelagem de Banco de Dados - Prof. Cid Andrade
+-- =============================================================
+`;
+  const blocos = PASSOS.map((p, i) => {
+    const titulo = `-- Passo ${i + 1} - ${p.titulo}`;
+    let sql = p.sql;
+    if (p.script === "comentado") {
+      sql = "-- Demonstração: este comando FALHA com ERROR 1451 (a FK protege a casa).\n" +
+        sql.split("\n").map((l) => "-- " + l).join("\n");
+    }
+    return `${titulo}\n${sql}`;
+  });
+  return cab + "\n" + blocos.join("\n\n") + "\n";
+}
+
+/* ===================================================================
+   Telas
+   =================================================================== */
+
+const palco = document.getElementById("palco");
+const nav = document.getElementById("nav");
+const TOTAL = PASSOS.length;
+let atual = 0; // 0 = capa, 1..TOTAL = passos, TOTAL+1 = fim
+
+function telaCapa() {
+  return `
+  <section class="capa entra">
+    <span class="rotulo">Do DER ao script · MySQL</span>
+    <h1>O banco de dados de <em>Westeros</em></h1>
+    <p class="lead">Vamos construir, comando a comando, o script SQL de um banco com duas tabelas relacionadas — as grandes casas de Game of Thrones e os seus personagens. Cada passo mostra o comando, explica cada parte e o que o MySQL responde.</p>
+
+    <div class="capa-grade">
+      <div>
+        <div class="cartao">
+          <span class="rotulo">O problema</span>
+          <h2>Os registros da Cidadela</h2>
+          <p>Os meistres querem parar de anotar em pergaminhos soltos. Precisam de um cadastro das <b>casas</b> (nome, lema, sede) e dos <b>personagens</b> (nome, título, idade, se está vivo), sabendo a que casa cada um pertence.</p>
+          <h3>Regras de negócio</h3>
+          <ul>
+            <li>Cada casa tem nome único e um lema; a sede pode ser desconhecida.</li>
+            <li>Todo personagem pertence a <b>exatamente uma</b> casa; uma casa pode ter vários personagens, ou nenhum.</li>
+            <li>Não se pode apagar uma casa que ainda tenha personagens.</li>
+            <li>Idade, se informada, fica entre 0 e 120. Todo personagem começa vivo.</li>
+          </ul>
+          <h3>O que o banco precisa responder</h3>
+          <ul class="req">
+            <li><span class="selo">P1</span><span>A que casa cada personagem pertence e onde fica a sede? <i>(consulta C01)</i></span></li>
+            <li><span class="selo kpi">K1</span><span>KPI: quantos personagens vivos cada casa tem? <i>(consulta C02)</i></span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div>
+        <div class="cartao">
+          <span class="rotulo">Modelo</span>
+          <h2>Diagrama Entidade-Relacionamento</h2>
+          <div class="der-caixa"><div class="mermaid" id="der"></div></div>
+          <div class="cardinalidade">
+            <div><code>||</code><span>do lado de <b>CASA</b>: cada personagem tem <b>uma e só uma</b> casa (mínimo 1, máximo 1).</span></div>
+            <div><code>o{</code><span>do lado de <b>PERSONAGEM</b>: cada casa tem <b>zero ou muitos</b> personagens.</span></div>
+          </div>
+          <p style="margin-top:12px">A relação 1:N vira uma <b>chave estrangeira</b> (<code>id_casa</code>) no lado N — a tabela <code>personagem</code>.</p>
+          <details>
+            <summary>Ver o código Mermaid do DER</summary>
+            ${blocoCodigo(MERMAID_DER)}
+            <p class="toque" style="margin-top:8px">Cole em <a href="https://mermaid.live" target="_blank" rel="noopener">mermaid.live</a> para editar ou exportar como imagem.</p>
+            <button class="btn-copiar" type="button" data-copiar="mermaid">Copiar código</button>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-iniciar" type="button" id="btnIniciar">Iniciar <span>→</span></button>
+  </section>`;
+}
+
+function telaPasso(i) {
+  const p = PASSOS[i - 1];
+  const partes = p.partes.map(([trecho, txt], k) =>
+    `<li class="parte" tabindex="0" data-k="${k}"><code class="trecho">${esc(trecho.trim().replace(/\s+/g, " "))}</code><p>${txt}</p></li>`).join("");
+
+  let res = "";
+  if (p.resultado.tipo === "tabela") {
+    res = `<div class="resultado">${tabelaHTML(p.resultado.colunas, p.resultado.linhas)}<div class="rodape-res">${esc(p.resultado.rodape)}</div></div>`;
+  } else if (p.resultado.tipo === "erro") {
+    res = `<div class="resultado"><div class="erro-faixa">⚠ O MySQL recusou o comando</div><pre class="terminal">${p.resultado.texto}</pre></div>`;
+  } else {
+    res = `<div class="resultado"><pre class="terminal">${p.resultado.texto}</pre></div>`;
+  }
+
+  let estado = "";
+  if (p.estado) {
+    const e = p.estado;
+    estado = `
+      <div class="secao">
+        <div class="bloco-titulo"><h2>Como fica a tabela ${esc(e.tabela)}</h2></div>
+        <div class="resultado">${tabelaHTML(e.colunas, e.linhas, e)}${legendaEstado(e)}</div>
+      </div>`;
+  }
+
+  return `
+  <article class="entra">
+    <header class="passo-cab">
+      <span class="fase"><b>${p.fase}</b> Passo ${i} · ${esc(p.rotulo)}</span>
+      <h1>${esc(p.titulo)}</h1>
+      <p>${p.intro}</p>
+    </header>
+    <div class="grade">
+      <div class="coluna">
+        <div class="bloco-titulo"><h2>Comando</h2><button class="btn-copiar" type="button" data-copiar="passo">Copiar</button></div>
+        ${blocoCodigo(p.sql)}
+        <div class="secao">
+          <div class="bloco-titulo"><h2>${p.resultado.tipo === "tabela" ? "Resultado" : "Resposta do MySQL"}</h2></div>
+          ${res}
+        </div>
+        ${estado}
+      </div>
+      <div class="coluna">
+        <div class="bloco-titulo"><h2>Parte por parte</h2></div>
+        <p class="toque">Toque num item para destacar a linha no comando.</p>
+        <ul class="partes">${partes}</ul>
+        ${(p.notas || []).map(nota).join("")}
+      </div>
+    </div>
+  </article>`;
+}
+
+function telaFim() {
+  return `
+  <article class="entra">
+    <header class="passo-cab">
+      <span class="fase"><b>FIM</b> Script completo</span>
+      <h1>O script inteiro, pronto para rodar</h1>
+      <p>Todos os passos juntos, na ordem. Execute no MySQL Workbench (raio ⚡ que executa tudo) ou no terminal: <code>mysql -u root -p &lt; westeros.sql</code>.</p>
+    </header>
+    <div class="fim-acoes">
+      <button class="btn-prim" type="button" id="btnBaixar">⤓ Baixar westeros.sql</button>
+      <button class="btn-sec" type="button" data-copiar="tudo">Copiar o script</button>
+    </div>
+    <div class="grade">
+      <div class="coluna">${blocoCodigo(scriptCompleto(), { longo: true })}</div>
+      <div class="coluna">
+        <div class="cartao">
+          <span class="rotulo">Para levar</span>
+          <h2>A ordem de um script</h2>
+          <ol class="ordem">
+            <li><span><b>DROP / CREATE DATABASE</b> e <b>USE</b> — ponto de partida limpo.</span></li>
+            <li><span><b>DROP TABLE IF EXISTS</b> + <b>CREATE TABLE</b> — pais antes de filhos, com todas as constraints nomeadas.</span></li>
+            <li><span><b>INSERT</b> — também pais antes de filhos; lista de colunas sempre explícita.</span></li>
+            <li><span><b>SELECT</b> — cada consulta com o cabeçalho <code>-- Cnn</code> e <code>-- Atende:</code>.</span></li>
+            <li><span><b>UPDATE / DELETE</b> — sempre com <code>WHERE</code>; excluir filhos antes do pai.</span></li>
+          </ol>
+        </div>
+        <div class="cartao">
+          <span class="rotulo">Estado final</span>
+          <h2>casa</h2>
+          <div class="resultado">${tabelaHTML(COL_CASA, CASAS.slice(0, 3))}</div>
+          <h2 style="margin-top:16px">personagem</h2>
+          <div class="resultado">${tabelaHTML(COL_PERS, PERS_SANSA.slice(0, 6))}</div>
+        </div>
+        <div class="nota verde"><strong class="tipo">Desafio</strong><p>Escreva a <b>C03</b>: os personagens que estão vivos, com o lema da sua casa, ordenados por idade. Não esqueça o cabeçalho — a que problema ela atende?</p></div>
+      </div>
+    </div>
+  </article>`;
+}
+
+/* ===================================================================
+   Navegação
+   =================================================================== */
+
+function renderDER() {
+  const el = document.getElementById("der");
+  if (!el) return;
+  if (!window.mermaid) {
+    el.innerHTML = `<pre class="der-falha">${esc(MERMAID_DER)}</pre>`;
+    return;
+  }
+  el.textContent = MERMAID_DER;
+  el.removeAttribute("data-processed");
+  mermaid.run({ nodes: [el] }).catch(() => {
+    el.innerHTML = `<pre class="der-falha">${esc(MERMAID_DER)}</pre>`;
+  });
+}
+
+function ir(n, { foco = true } = {}) {
+  atual = Math.max(0, Math.min(TOTAL + 1, n));
+  if (atual === 0) palco.innerHTML = telaCapa();
+  else if (atual <= TOTAL) palco.innerHTML = telaPasso(atual);
+  else palco.innerHTML = telaFim();
+
+  nav.hidden = atual === 0;
+  document.getElementById("btnAnt").disabled = atual === 0;
+  const prox = document.getElementById("btnProx");
+  prox.disabled = atual === TOTAL + 1;
+  prox.textContent = atual === TOTAL ? "Script completo →" : "Próximo →";
+  document.getElementById("contador").textContent =
+    atual === 0 ? "" : atual <= TOTAL ? `${atual} / ${TOTAL}` : "fim";
+  document.getElementById("barra").style.width = `${(atual / (TOTAL + 1)) * 100}%`;
+
+  const hash = atual === 0 ? "#inicio" : atual <= TOTAL ? `#passo-${atual}` : "#script";
+  if (location.hash !== hash) history.replaceState(null, "", hash);
+
+  if (atual === 0) renderDER();
+  window.scrollTo(0, 0);
+  if (foco) palco.focus({ preventScroll: true });
+}
+
+function lerHash() {
+  const h = location.hash;
+  if (h === "#script") return TOTAL + 1;
+  const m = h.match(/^#passo-(\d+)$/);
+  return m ? Number(m[1]) : 0;
+}
+
+// Destacar no código a(s) linha(s) do trecho tocado.
+function destacar(li) {
+  const p = PASSOS[atual - 1];
+  if (!p) return;
+  const [trecho] = p.partes[Number(li.dataset.k)];
+  const alvo = trecho.trim();
+  const jaAtiva = li.classList.contains("ativa");
+  palco.querySelectorAll(".parte.ativa").forEach((x) => x.classList.remove("ativa"));
+  const linhas = palco.querySelectorAll(".coluna:first-child .codigo .ln");
+  linhas.forEach((x) => x.classList.remove("acesa"));
+  if (jaAtiva) return;
+  li.classList.add("ativa");
+  const fonte = p.sql.split("\n");
+  let achou = false;
+  fonte.forEach((l, k) => {
+    if (alvo.length > 1 && (l.includes(alvo) || (alvo.length > 6 && l.trim() && alvo.includes(l.trim()) && l.trim().length > 3))) {
+      linhas[k].classList.add("acesa"); achou = true;
+    }
+  });
+  if (!achou) {
+    // trecho curto (ex.: "NULL", ";") — acende as linhas que o contêm
+    fonte.forEach((l, k) => { if (alvo && l.includes(alvo)) linhas[k].classList.add("acesa"); });
+  }
+  const primeira = palco.querySelector(".ln.acesa");
+  if (primeira && window.innerWidth < 1000) {
+    const r = primeira.getBoundingClientRect();
+    if (r.top < 70 || r.bottom > innerHeight - 80) primeira.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+}
+
+palco.addEventListener("click", (ev) => {
+  const t = ev.target;
+  if (t.closest("#btnIniciar")) return ir(1);
+  if (t.closest("#btnBaixar")) {
+    const blob = new Blob([scriptCompleto()], { type: "application/sql;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "westeros.sql";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    return;
+  }
+  const c = t.closest("[data-copiar]");
+  if (c) {
+    const tipo = c.dataset.copiar;
+    if (tipo === "mermaid") return copiar(MERMAID_DER);
+    if (tipo === "tudo") return copiar(scriptCompleto());
+    return copiar(PASSOS[atual - 1].sql);
+  }
+  const li = t.closest(".parte");
+  if (li) destacar(li);
+});
+palco.addEventListener("keydown", (ev) => {
+  const li = ev.target.closest && ev.target.closest(".parte");
+  if (li && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); destacar(li); }
+});
+
+document.getElementById("btnAnt").addEventListener("click", () => ir(atual - 1));
+document.getElementById("btnProx").addEventListener("click", () => ir(atual + 1));
+document.addEventListener("keydown", (ev) => {
+  if (dlg.open || ev.target.closest("input, textarea")) return;
+  if (ev.key === "ArrowRight") ir(atual + 1);
+  else if (ev.key === "ArrowLeft") ir(atual - 1);
+});
+window.addEventListener("hashchange", () => { const n = lerHash(); if (n !== atual) ir(n); });
+
+// Índice
+const dlg = document.getElementById("dlg");
+function montarIndice() {
+  const itens = [["0", "Início", "O problema e o DER", 0]]
+    .concat(PASSOS.map((p, k) => [String(k + 1), p.titulo, `${p.fase} · ${p.rotulo}`, k + 1]))
+    .concat([["✓", "Script completo", "Baixar e copiar", TOTAL + 1]]);
+  document.getElementById("listaPassos").innerHTML = itens.map(([n, t, f, alvo]) =>
+    `<li><button type="button" data-ir="${alvo}" ${alvo === atual ? 'aria-current="step"' : ""}>
+       <span class="n">${n}</span><span class="t">${esc(t)}<span class="f">${esc(f)}</span></span></button></li>`).join("");
+}
+document.getElementById("btnIndice").addEventListener("click", () => { montarIndice(); dlg.showModal(); });
+document.getElementById("dlgFechar").addEventListener("click", () => dlg.close());
+dlg.addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-ir]");
+  if (b) { dlg.close(); ir(Number(b.dataset.ir)); }
+  else if (ev.target === dlg) dlg.close();
+});
+
+if (window.mermaid) {
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: "base",
+    fontFamily: "Inter, system-ui, sans-serif",
+    themeVariables: {
+      primaryColor: "#F3ECDF",
+      primaryTextColor: "#241B2E",
+      mainBkg: "#F3ECDF",
+      edgeLabelBackground: "#FAF6EC",
+      tertiaryColor: "#FAF6EC",
+      primaryBorderColor: "#3B2350",
+      lineColor: "#3B2350",
+      textColor: "#241B2E",
+      attributeBackgroundColorOdd: "#FAF6EC",
+      attributeBackgroundColorEven: "#F3ECDF",
+      fontSize: "14px",
+    },
+    er: { useMaxWidth: true, layoutDirection: "TB" },
+  });
+}
+
+ir(lerHash(), { foco: false });
+</script>
+</body>
+</html>
