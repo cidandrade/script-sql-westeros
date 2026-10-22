@@ -16,6 +16,7 @@ erDiagram
         VARCHAR nome UK "50, obrigatório"
         VARCHAR lema "100, obrigatório"
         VARCHAR sede "60, opcional"
+        VARCHAR regiao "40, obrigatório"
     }
     PERSONAGEM {
         INT id_personagem PK "AUTO_INCREMENT"
@@ -38,14 +39,15 @@ erDiagram
 | 2 | `USE` | banco padrão da sessão |
 | 3 | `DROP TABLE IF EXISTS` / `CREATE TABLE casa` | `PRIMARY KEY`, `UNIQUE`, `CHECK`, `NOT NULL`, constraints nomeadas |
 | 4 | `DROP TABLE IF EXISTS` / `CREATE TABLE personagem` | `DEFAULT`, `UNIQUE` composta, `FOREIGN KEY ... ON DELETE RESTRICT ON UPDATE CASCADE` |
-| 5 | `INSERT INTO` | um registro |
-| 6–7 | `INSERT INTO` | vários registros num só comando |
-| 8 | `SELECT` + `INNER JOIN` | consulta **C01** |
-| 9–10 | `UPDATE` | uma coluna; várias colunas com expressão |
-| 11 | `DELETE` | barrado pela FK (`ERROR 1451`) |
-| 12 | `DELETE` | o filho antes do pai |
-| 13 | `SELECT` + `LEFT JOIN` + `GROUP BY` | consulta **C02** (KPI) |
-| 14 | `DELETE` | agora o pai sai |
+| 5 | `ALTER TABLE casa ADD COLUMN` | `regiao NOT NULL AFTER sede`, antes de haver dados |
+| 6 | `INSERT INTO` | um registro |
+| 7–8 | `INSERT INTO` | vários registros num só comando |
+| 9 | `SELECT` + `INNER JOIN` | consulta **C01** |
+| 10–11 | `UPDATE` | uma coluna; várias colunas com expressão |
+| 12 | `DELETE` | barrado pela FK (`ERROR 1451`) |
+| 13 | `DELETE` | o filho antes do pai |
+| 14 | `SELECT` + `LEFT JOIN` + `GROUP BY` | consulta **C02** (KPI) |
+| 15 | `DELETE` | agora o pai sai |
 
 Toda consulta segue o cabeçalho:
 
@@ -70,4 +72,4 @@ mysql -u root -p < westeros.sql
 
 Requer **MySQL 8.0.16+** (para que os `CHECK` sejam respeitados). No MariaDB/XAMPP, troque a collation `utf8mb4_0900_ai_ci` por `utf8mb4_unicode_ci`.
 
-O `DELETE` do passo 11 vai **comentado** no script, porque ele falha de propósito e interromperia a execução.
+O `DELETE` do passo 12 vai **comentado** no script, porque ele falha de propósito e interromperia a execução.

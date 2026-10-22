@@ -205,6 +205,8 @@ th { font: 700 12px/1.2 var(--mono); color: var(--ameixa); background: var(--cre
 td.num { font-family: var(--mono); text-align: right; }
 td.nulo { color: var(--tinta-suave); font: italic 13px var(--mono); }
 tr.nova td { background: rgba(127, 160, 137, .2); }
+th.nova { background: rgba(127, 160, 137, .45); }
+td.vazia { color: var(--tinta-suave); font-style: italic; text-align: center; }
 td.mudou { background: rgba(201, 165, 110, .32); font-weight: 700; }
 td.mudou s { color: var(--tinta-suave); font-weight: 400; margin-right: 6px; }
 tr.removida td { text-decoration: line-through; color: var(--tinta-suave); background: rgba(110, 101, 119, .1); }
@@ -377,6 +379,7 @@ const MERMAID_DER = `erDiagram
         VARCHAR nome UK "50, obrigatório"
         VARCHAR lema "100, obrigatório"
         VARCHAR sede "60, opcional"
+        VARCHAR regiao "40, obrigatório"
     }
     PERSONAGEM {
         INT id_personagem PK "AUTO_INCREMENT"
@@ -388,13 +391,13 @@ const MERMAID_DER = `erDiagram
     }`;
 
 // Estados das tabelas ao longo do script (o que um SELECT * mostraria).
-const COL_CASA = ["id_casa", "nome", "lema", "sede"];
+const COL_CASA = ["id_casa", "nome", "lema", "sede", "regiao"];
 const COL_PERS = ["id_personagem", "nome", "titulo", "idade", "vivo", "id_casa"];
 const CASAS = [
-  [1, "Stark", "O inverno está chegando", "Winterfell"],
-  [2, "Lannister", "Ouça-me rugir", "Rochedo Casterly"],
-  [3, "Targaryen", "Fogo e Sangue", "Pedra do Dragão"],
-  [4, "Greyjoy", "Nós não semeamos", "Pyke"],
+  [1, "Stark", "O inverno está chegando", "Winterfell", "Norte"],
+  [2, "Lannister", "Ouça-me rugir", "Rochedo Casterly", "Terras Ocidentais"],
+  [3, "Targaryen", "Fogo e Sangue", "Pedra do Dragão", "Terras da Coroa"],
+  [4, "Greyjoy", "Nós não semeamos", "Pyke", "Ilhas de Ferro"],
 ];
 const PERS = [
   [1, "Eddard Stark", "Senhor de Winterfell", 35, 1, 1],
@@ -532,7 +535,7 @@ CREATE TABLE personagem (
       ["CONSTRAINT ck_personagem_idade     CHECK (idade BETWEEN 0 AND 120)", "Faixa plausível de idade. Detalhe importante: um <code>CHECK</code> com <code>NULL</code> <b>passa</b> — o resultado é “desconhecido”, e só o “falso” é barrado. Por isso a idade continua opcional."],
       ["FOREIGN KEY (id_casa)", "A <b>chave estrangeira</b>: <code>id_casa</code> só aceita valores que existam em <code>casa.id_casa</code>. Inserir <code>id_casa = 99</code> dá <code>ERROR 1452: Cannot add or update a child row</code>. O MySQL cria sozinho um índice para essa coluna."],
       ["REFERENCES casa (id_casa)", "A tabela e a coluna referenciadas. É por isso que <code>casa</code> foi criada antes: no script, <b>pais antes de filhos</b>."],
-      ["ON DELETE RESTRICT", "Impede apagar uma casa que ainda tenha personagens — veremos o erro acontecer no passo 11. As alternativas seriam <code>CASCADE</code> (apaga os personagens junto) e <code>SET NULL</code> (exigiria <code>id_casa</code> aceitando nulo)."],
+      ["ON DELETE RESTRICT", "Impede apagar uma casa que ainda tenha personagens — veremos o erro acontecer no passo 12. As alternativas seriam <code>CASCADE</code> (apaga os personagens junto) e <code>SET NULL</code> (exigiria <code>id_casa</code> aceitando nulo)."],
       ["ON UPDATE CASCADE", "Se o <code>id_casa</code> de uma casa mudar, a mudança se propaga para os personagens. Com chave substituta isso é raro, mas é a escolha mais segura."],
     ],
     resultado: { tipo: "msg", texto: `mysql> DROP TABLE IF EXISTS personagem;
@@ -548,42 +551,63 @@ mysql> CREATE TABLE personagem ( ... ) ENGINE = InnoDB;
   },
   /* ------------------------------------------------------------ 5 */
   {
+    fase: "DDL", rotulo: "Alterar a estrutura",
+    titulo: "ALTER TABLE: a casa ganha a região",
+    intro: "Ao conferir o script contra o DER, os meistres notam que a tabela <code>casa</code> saiu sem a <b>região</b> de Westeros onde cada casa fica. Não é preciso apagar e recriar a tabela: o <code>ALTER TABLE</code> muda a estrutura de uma tabela que já existe.",
+    sql: `ALTER TABLE casa
+  ADD COLUMN regiao VARCHAR(40) NOT NULL
+  AFTER sede;`,
+    partes: [
+      ["ALTER TABLE casa", "Altera a <b>estrutura</b> de uma tabela existente — colunas, tipos, constraints. É DDL, como o <code>CREATE</code>: mexe no molde, não nos dados."],
+      ["ADD COLUMN regiao VARCHAR(40)", "Acrescenta uma coluna, com nome e tipo escritos como no <code>CREATE TABLE</code>. A palavra <code>COLUMN</code> é opcional no MySQL, mas deixa o comando mais legível."],
+      ["NOT NULL", "Toda casa fica em alguma região: o campo é <b>obrigatório</b>. Com a tabela ainda vazia, dá para exigir isso sem dor nenhuma — veja a nota “Por que antes dos dados?”."],
+      ["AFTER sede", "Onde a coluna entra. Sem <code>AFTER</code>, ela iria para o fim; <code>FIRST</code> a poria no início. A posição só muda o que o <code>SELECT *</code> e o <code>DESCRIBE</code> mostram — é recurso do MySQL, não do SQL padrão."],
+    ],
+    resultado: { tipo: "msg", texto: `mysql> ALTER TABLE casa ADD COLUMN regiao VARCHAR(40) NOT NULL AFTER sede;\n<span class="ok">Query OK</span>, 0 rows affected\nRecords: 0  Duplicates: 0  Warnings: 0` },
+    estado: { tabela: "casa", colunas: COL_CASA, linhas: [], colunasNovas: [4] },
+    notas: [
+      ["verde", "Por que antes dos dados?", "Se as quatro casas já estivessem gravadas, o MySQL aceitaria o mesmo comando e preencheria a coluna nova com <code>''</code> (o valor implícito de um <code>VARCHAR NOT NULL</code>): a região seria “obrigatória”, mas quatro casas ficariam sem ela. Com dados, o caminho é outro — <code>ADD COLUMN</code> aceitando nulo, um <code>UPDATE</code> em cada casa e só então <code>MODIFY</code> para <code>NOT NULL</code>."],
+      ["atencao", "A família do ALTER TABLE", "<code>MODIFY COLUMN</code> muda tipo ou nulidade; <code>RENAME COLUMN a TO b</code> renomeia; <code>DROP COLUMN</code> remove (com os dados!); <code>ADD CONSTRAINT</code> e <code>DROP CONSTRAINT</code> cuidam das regras. Para conferir o resultado: <code>DESCRIBE casa;</code>."],
+    ],
+  },
+  /* ------------------------------------------------------------ 6 */
+  {
     fase: "DML", rotulo: "Inserir · 1 registro",
     titulo: "INSERT INTO: uma casa",
     intro: "Com as tabelas prontas, começamos a gravar dados — sempre pela tabela pai.",
-    sql: `INSERT INTO casa (nome, lema, sede)
-VALUES ('Stark', 'O inverno está chegando', 'Winterfell');`,
+    sql: `INSERT INTO casa (nome, lema, sede, regiao)
+VALUES ('Stark', 'O inverno está chegando', 'Winterfell', 'Norte');`,
     partes: [
       ["INSERT INTO casa", "A tabela que recebe a linha."],
-      ["(nome, lema, sede)", "A <b>lista de colunas</b>. Sempre a escreva: o script continua certo mesmo que alguém acrescente colunas à tabela depois. <code>id_casa</code> ficou de fora de propósito — o <code>AUTO_INCREMENT</code> gera o valor 1."],
-      ["VALUES ('Stark', 'O inverno está chegando', 'Winterfell')", "Os valores, <b>na ordem da lista de colunas</b> (não na ordem da tabela). Texto vai entre aspas simples; números, sem aspas. Um par de parênteses = uma linha."],
+      ["(nome, lema, sede, regiao)", "A <b>lista de colunas</b>, já com a <code>regiao</code> do passo anterior. Sempre a escreva: o script continua certo mesmo que alguém acrescente colunas à tabela depois — como o <code>ALTER TABLE</code> acabou de fazer. <code>id_casa</code> ficou de fora de propósito — o <code>AUTO_INCREMENT</code> gera o valor 1."],
+      ["VALUES ('Stark', 'O inverno está chegando', 'Winterfell', 'Norte')", "Os valores, <b>na ordem da lista de colunas</b> (não na ordem da tabela). Texto vai entre aspas simples; números, sem aspas. Um par de parênteses = uma linha."],
     ],
-    resultado: { tipo: "msg", texto: `mysql> INSERT INTO casa (nome, lema, sede) VALUES (...);\n<span class="ok">Query OK</span>, 1 row affected` },
+    resultado: { tipo: "msg", texto: `mysql> INSERT INTO casa (nome, lema, sede, regiao) VALUES (...);\n<span class="ok">Query OK</span>, 1 row affected` },
     estado: { tabela: "casa", colunas: COL_CASA, linhas: CASAS.slice(0, 1), novas: [0] },
     notas: [
       ["verde", "Apóstrofo dentro do texto", "Para gravar <i>King's Landing</i>, dobre o apóstrofo: <code>'King''s Landing'</code>."],
       ["atencao", "Qual id foi gerado?", "A função <code>LAST_INSERT_ID()</code> devolve o último valor de <code>AUTO_INCREMENT</code> gerado na sua sessão — útil quando a aplicação precisa do id logo depois de inserir."],
     ],
   },
-  /* ------------------------------------------------------------ 6 */
+  /* ------------------------------------------------------------ 7 */
   {
     fase: "DML", rotulo: "Inserir · vários registros",
     titulo: "INSERT INTO: várias casas num só comando",
     intro: "O mesmo <code>INSERT</code> aceita várias linhas: basta separar os grupos de valores por vírgula.",
-    sql: `INSERT INTO casa (nome, lema, sede) VALUES
-  ('Lannister', 'Ouça-me rugir',    'Rochedo Casterly'),
-  ('Targaryen', 'Fogo e Sangue',    'Pedra do Dragão'),
-  ('Greyjoy',   'Nós não semeamos', 'Pyke');`,
+    sql: `INSERT INTO casa (nome, lema, sede, regiao) VALUES
+  ('Lannister', 'Ouça-me rugir',    'Rochedo Casterly', 'Terras Ocidentais'),
+  ('Targaryen', 'Fogo e Sangue',    'Pedra do Dragão',  'Terras da Coroa'),
+  ('Greyjoy',   'Nós não semeamos', 'Pyke',             'Ilhas de Ferro');`,
     partes: [
-      ["INSERT INTO casa (nome, lema, sede) VALUES", "Igual ao passo anterior: tabela, lista de colunas e <code>VALUES</code> — escritos <b>uma vez só</b>."],
-      ["('Lannister', 'Ouça-me rugir',    'Rochedo Casterly'),", "Cada parênteses é uma linha, separada da próxima por <b>vírgula</b>. Os ids gerados serão 2, 3 e 4."],
-      ["('Greyjoy',   'Nós não semeamos', 'Pyke');", "A última linha termina com <code>;</code>, não com vírgula — esquecer isso é o erro de sintaxe mais comum aqui."],
+      ["INSERT INTO casa (nome, lema, sede, regiao) VALUES", "Igual ao passo anterior: tabela, lista de colunas e <code>VALUES</code> — escritos <b>uma vez só</b>."],
+      ["('Lannister', 'Ouça-me rugir',    'Rochedo Casterly', 'Terras Ocidentais'),", "Cada parênteses é uma linha, separada da próxima por <b>vírgula</b>. Os ids gerados serão 2, 3 e 4."],
+      ["('Greyjoy',   'Nós não semeamos', 'Pyke',             'Ilhas de Ferro');", "A última linha termina com <code>;</code>, não com vírgula — esquecer isso é o erro de sintaxe mais comum aqui."],
       ["Por que num só comando?", "É mais rápido (uma ida ao servidor em vez de três) e é <b>atômico</b> no InnoDB: se uma linha falhar — por exemplo, repetir <code>'Stark'</code>, que viola <code>uq_casa_nome</code> —, nenhuma das três é gravada."],
     ],
-    resultado: { tipo: "msg", texto: `mysql> INSERT INTO casa (nome, lema, sede) VALUES (...), (...), (...);\n<span class="ok">Query OK</span>, 3 rows affected\nRecords: 3  Duplicates: 0  Warnings: 0` },
+    resultado: { tipo: "msg", texto: `mysql> INSERT INTO casa (nome, lema, sede, regiao) VALUES (...), (...), (...);\n<span class="ok">Query OK</span>, 3 rows affected\nRecords: 3  Duplicates: 0  Warnings: 0` },
     estado: { tabela: "casa", colunas: COL_CASA, linhas: CASAS, novas: [1, 2, 3] },
   },
-  /* ------------------------------------------------------------ 7 */
+  /* ------------------------------------------------------------ 8 */
   {
     fase: "DML", rotulo: "Inserir · tabela filha",
     titulo: "INSERT INTO: os personagens",
@@ -607,7 +631,7 @@ VALUES ('Stark', 'O inverno está chegando', 'Winterfell');`,
       ["verde", "E o BOOLEAN?", "Repare na coluna <code>vivo</code> da tabela ao lado: o MySQL guarda e mostra <code>1</code>, não <code>TRUE</code>."],
     ],
   },
-  /* ------------------------------------------------------------ 8 */
+  /* ------------------------------------------------------------ 9 */
   {
     fase: "DQL", rotulo: "Consulta C01",
     titulo: "SELECT com INNER JOIN",
@@ -649,7 +673,7 @@ SELECT p.nome   AS personagem,
       ["verde", "Leia o resultado", "O <code>titulo</code> da Arya e da Sansa aparece como <code>NULL</code>: a linha existe, só falta o valor. A tabela <code>casa</code> repetiu sede e nome para cada personagem — é o <code>JOIN</code> “desnormalizando” só na saída, enquanto no disco cada casa continua gravada uma única vez."],
     ],
   },
-  /* ------------------------------------------------------------ 9 */
+  /* ------------------------------------------------------------ 10 */
   {
     fase: "DML", rotulo: "Alterar · 1 coluna",
     titulo: "UPDATE: Eddard Stark morre",
@@ -669,7 +693,7 @@ SELECT p.nome   AS personagem,
       ["atencao", "Error 1175 no Workbench", "O Workbench vem com o <i>Safe Updates</i> ligado: ele recusa <code>UPDATE</code> e <code>DELETE</code> cujo <code>WHERE</code> não use uma coluna-chave. Filtrar pela PK, como aqui, é o jeito certo — não desligue a proteção."],
     ],
   },
-  /* ------------------------------------------------------------ 10 */
+  /* ------------------------------------------------------------ 11 */
   {
     fase: "DML", rotulo: "Alterar · várias colunas",
     titulo: "UPDATE: Sansa vira Rainha do Norte",
@@ -689,7 +713,7 @@ SELECT p.nome   AS personagem,
       ["verde", "Hábito profissional", "Antes de um <code>UPDATE</code> ou <code>DELETE</code>, rode um <code>SELECT</code> com o <b>mesmo</b> <code>WHERE</code> para ver quais linhas serão atingidas. Ou trabalhe dentro de uma transação: <code>START TRANSACTION;</code> … confira … <code>COMMIT;</code> (ou <code>ROLLBACK;</code> para desfazer)."],
     ],
   },
-  /* ------------------------------------------------------------ 11 */
+  /* ------------------------------------------------------------ 12 */
   {
     fase: "DML", rotulo: "Excluir · o erro",
     titulo: "DELETE barrado pela chave estrangeira",
@@ -711,7 +735,7 @@ SELECT p.nome   AS personagem,
       ["verde", "E se fosse CASCADE?", "Com <code>ON DELETE CASCADE</code>, este mesmo comando apagaria a casa <b>e o Theon junto</b>, sem perguntar nada. Poderoso — e perigoso. Por isso o <code>RESTRICT</code> é a escolha mais segura para começar."],
     ],
   },
-  /* ------------------------------------------------------------ 12 */
+  /* ------------------------------------------------------------ 13 */
   {
     fase: "DML", rotulo: "Excluir · o filho",
     titulo: "DELETE: primeiro o personagem",
@@ -725,7 +749,7 @@ SELECT p.nome   AS personagem,
     resultado: { tipo: "msg", texto: `mysql> DELETE FROM personagem WHERE id_personagem = 7;\n<span class="ok">Query OK</span>, 1 row affected` },
     estado: { tabela: "personagem", colunas: COL_PERS, linhas: PERS_SANSA, removidas: [6] },
   },
-  /* ------------------------------------------------------------ 13 */
+  /* ------------------------------------------------------------ 14 */
   {
     fase: "DQL", rotulo: "Consulta C02",
     titulo: "SELECT com LEFT JOIN e GROUP BY",
@@ -759,14 +783,14 @@ SELECT c.nome                   AS casa,
       rodape: "4 rows in set",
     },
     notas: [
-      ["verde", "O indicador pede uma ação", "Stark tem 3 personagens e 2 vivos (o Eddard morreu no passo 9). A Greyjoy tem zero: agora que ninguém depende dela, podemos removê-la."],
+      ["verde", "O indicador pede uma ação", "Stark tem 3 personagens e 2 vivos (o Eddard morreu no passo 10). A Greyjoy tem zero: agora que ninguém depende dela, podemos removê-la."],
     ],
   },
-  /* ------------------------------------------------------------ 14 */
+  /* ------------------------------------------------------------ 15 */
   {
     fase: "DML", rotulo: "Excluir · o pai",
     titulo: "DELETE: agora a casa sai",
-    intro: "Exatamente o mesmo comando do passo 11. A diferença está nos dados: nenhum personagem aponta mais para a Greyjoy.",
+    intro: "Exatamente o mesmo comando do passo 12. A diferença está nos dados: nenhum personagem aponta mais para a Greyjoy.",
     sql: `DELETE FROM casa
  WHERE nome = 'Greyjoy';`,
     partes: [
@@ -823,8 +847,8 @@ function celula(v, extra = "") {
   return `<td class="${ehNum(v) ? "num " : ""}${extra}">${esc(v)}</td>`;
 }
 
-function tabelaHTML(colunas, linhas, { novas = [], removidas = [], mudou = {}, antes = null } = {}) {
-  const cab = colunas.map((c) => `<th scope="col">${esc(c)}</th>`).join("");
+function tabelaHTML(colunas, linhas, { novas = [], removidas = [], mudou = {}, antes = null, colunasNovas = [] } = {}) {
+  const cab = colunas.map((c, k) => `<th scope="col"${colunasNovas.includes(k) ? ' class="nova"' : ""}>${esc(c)}</th>`).join("");
   const corpo = linhas.map((l, i) => {
     const cls = novas.includes(i) ? "nova" : removidas.includes(i) ? "removida" : "";
     const tds = l.map((v, c) => {
@@ -837,11 +861,13 @@ function tabelaHTML(colunas, linhas, { novas = [], removidas = [], mudou = {}, a
     }).join("");
     return `<tr class="${cls}">${tds}</tr>`;
   }).join("");
-  return `<div class="tabela-wrap"><table><thead><tr>${cab}</tr></thead><tbody>${corpo}</tbody></table></div>`;
+  const vazio = linhas.length ? "" : `<tr><td class="vazia" colspan="${colunas.length}">tabela vazia — nenhuma linha ainda</td></tr>`;
+  return `<div class="tabela-wrap"><table><thead><tr>${cab}</tr></thead><tbody>${corpo}${vazio}</tbody></table></div>`;
 }
 
 function legendaEstado(e) {
   const itens = [];
+  if (e.colunasNovas) itens.push(`<span><i style="background:rgba(127,160,137,.45)"></i>coluna nova</span>`);
   if (e.novas) itens.push(`<span><i style="background:rgba(127,160,137,.45)"></i>linha inserida</span>`);
   if (e.mudou) itens.push(`<span><i style="background:rgba(201,165,110,.55)"></i>valor alterado (riscado = antes)</span>`);
   if (e.removidas) itens.push(`<span><i style="background:rgba(110,101,119,.3)"></i>linha excluída</span>`);
@@ -910,10 +936,10 @@ function telaCapa() {
         <div class="cartao">
           <span class="rotulo">O problema</span>
           <h2>Os registros da Cidadela</h2>
-          <p>Os meistres querem parar de anotar em pergaminhos soltos. Precisam de um cadastro das <b>casas</b> (nome, lema, sede) e dos <b>personagens</b> (nome, título, idade, se está vivo), sabendo a que casa cada um pertence.</p>
+          <p>Os meistres querem parar de anotar em pergaminhos soltos. Precisam de um cadastro das <b>casas</b> (nome, lema, sede, região) e dos <b>personagens</b> (nome, título, idade, se está vivo), sabendo a que casa cada um pertence.</p>
           <h3>Regras de negócio</h3>
           <ul>
-            <li>Cada casa tem nome único e um lema; a sede pode ser desconhecida.</li>
+            <li>Cada casa tem nome único, um lema e a região de Westeros onde fica; a sede pode ser desconhecida.</li>
             <li>Todo personagem pertence a <b>exatamente uma</b> casa; uma casa pode ter vários personagens, ou nenhum.</li>
             <li>Não se pode apagar uma casa que ainda tenha personagens.</li>
             <li>Idade, se informada, fica entre 0 e 120. Todo personagem começa vivo.</li>
@@ -1021,7 +1047,7 @@ function telaFim() {
           <h2>A ordem de um script</h2>
           <ol class="ordem">
             <li><span><b>DROP / CREATE DATABASE</b> e <b>USE</b> — ponto de partida limpo.</span></li>
-            <li><span><b>DROP TABLE IF EXISTS</b> + <b>CREATE TABLE</b> — pais antes de filhos, com todas as constraints nomeadas.</span></li>
+            <li><span><b>DROP TABLE IF EXISTS</b> + <b>CREATE TABLE</b> — pais antes de filhos, com todas as constraints nomeadas. Se a estrutura mudar, <b>ALTER TABLE</b> — de preferência antes dos dados.</span></li>
             <li><span><b>INSERT</b> — também pais antes de filhos; lista de colunas sempre explícita.</span></li>
             <li><span><b>SELECT</b> — cada consulta com o cabeçalho <code>-- Cnn</code> e <code>-- Atende:</code>.</span></li>
             <li><span><b>UPDATE / DELETE</b> — sempre com <code>WHERE</code>; excluir filhos antes do pai.</span></li>
